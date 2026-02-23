@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google TV Web Wrapper</title>
+    <style>
+        :root {
+            --primary: #00C9FF;
+            --secondary: #92FE9D;
+            --bg: #0a0a0c;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: #ffffff;
+            font-family: 'Inter', -apple-system, Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 3rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            width: 80%;
+            max-width: 1000px;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(0, 201, 255, 0.3);
+        }
+
+        p#status {
+            font-size: 1.5rem;
+            color: #a0a0b0;
+            margin: 0;
+            height: 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .tv-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            padding: 2.5rem 1rem;
+            font-size: 1.5rem;
+            border-radius: 16px;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-weight: bold;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 
+         * Crucial for TV Spatial Navigation: 
+         * The focus state dynamically responds to the D-Pad 
+         */
+        .tv-card:focus,
+        .tv-card.focused {
+            background: linear-gradient(135deg, rgba(0, 201, 255, 0.2) 0%, rgba(146, 254, 157, 0.2) 100%);
+            border-color: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 15px 35px rgba(0, 201, 255, 0.3);
+            color: #fff;
+            z-index: 10;
+        }
+
+        .tv-card:active,
+        .tv-card.active {
+            transform: scale(0.95);
+            background: var(--primary);
+            color: #000;
+        }
+
+        /* Modal styling for 'Back' button demonstration */
+        #modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #modal.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        #modal h2 {
+            font-size: 3rem;
+        }
+
+        #modal p {
+            font-size: 1.5rem;
+            color: #888;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="main-container">
+        <h1>Google TV Experience</h1>
+        <p id="status">Use D-Pad to Navigate. Press OK to Select.</p>
+
+        <div class="grid" id="grid">
+            <!-- Cards organized in a 3x2 grid -->
+            <button class="tv-card" data-row="0" data-col="0">Movies</button>
+            <button class="tv-card" data-row="0" data-col="1">Shows</button>
+            <button class="tv-card" data-row="0" data-col="2">Live TV</button>
+            <button class="tv-card" data-row="1" data-col="0">Apps</button>
+            <button class="tv-card" data-row="1" data-col="1">Library</button>
+            <button class="tv-card" data-row="1" data-col="2">Settings</button>
+        </div>
+    </div>
+
+    <div id="modal">
+        <h2 id="modal-title">Feature Opened</h2>
+        <p>Press the <strong>BACK</strong> button on your remote to close.</p>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+
+        let currentRow = 0;
+        let currentCol = 0;
+        const maxRows = 2;
+        const maxCols = 3;
+
+        let isModalOpen = false;
+
+        function getCard(row, col) {
+            return document.querySelector(`.tv-card[data-row="${row}"][data-col="${col}"]`);
+        }
+
+        function updateFocus() {
+            // Remove focus from all
+            document.querySelectorAll('.tv-card').forEach(card => card.blur());
+            // Set focus to current
+            const target = getCard(currentRow, currentCol);
+            if (target) {
+                target.focus();
+            }
+        }
+
+        // Action when OK / Select is pressed
+        function handleSelect() {
+            if (isModalOpen) return;
+            const target = getCard(currentRow, currentCol);
+            if (target) {
+                target.classList.add('active');
+                setTimeout(() => target.classList.remove('active'), 200);
+
+                // Open modal
+                modalTitle.textContent = target.textContent + " Opened";
+                modal.classList.add('visible');
+                isModalOpen = true;
+                statusEl.textContent = "Viewing " + target.textContent;
+            }
+        }
+
+        // The MainActivity.kt calls this function when the hardware BACK button is pressed
+        function handleAppBack() {
+            if (isModalOpen) {
+                // We handle the back press by closing our modal
+                modal.classList.remove('visible');
+                isModalOpen = false;
+                statusEl.textContent = "Returned to Home. Use D-Pad to Navigate.";
+                updateFocus();
+                return true; // Return true to tell Kotlin NOT to close the app
+            }
+            return false; // Return false to let Kotlin close the app / go back natively
+        }
+
+        window.addEventListener('load', () => {
+            updateFocus();
+        });
+
+        // Listen to Arrow keys mapped from the TV D-Pad + Enter for OK button
+        window.addEventListener('keydown', (e) => {
+            if (isModalOpen) {
+                // If modal is open, let the custom handleAppBack or native Back take over
+                // Alternatively, Escape key maps to back on some emulator setups
+                if (e.key === 'Escape' || e.key === 'Backspace') {
+                    handleAppBack();
+                }
+                return;
+            }
+
+            let moved = false;
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (currentRow > 0) { currentRow--; moved = true; }
+                    break;
+                case 'ArrowDown':
+                    if (currentRow < maxRows - 1) { currentRow++; moved = true; }
+                    break;
+                case 'ArrowLeft':
+                    if (currentCol > 0) { currentCol--; moved = true; }
+                    break;
+                case 'ArrowRight':
+                    if (currentCol < maxCols - 1) { currentCol++; moved = true; }
+                    break;
+                case 'Enter':
+                    handleSelect();
+                    // Prevent default form submission or double clicks
+                    e.preventDefault();
+                    break;
+            }
+
+            if (moved) {
+                statusEl.textContent = `Navigating...`;
+                updateFocus();
+                e.preventDefault(); // Prevent native scroll
+            }
+        });
+    </script>
+</body>
+
+</html>

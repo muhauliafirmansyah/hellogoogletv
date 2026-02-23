@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Hello Google TV</string>
+    <string name="hello_tv">Hello World, Google TV!</string>
+</resources>
